@@ -51,8 +51,8 @@ void setup() {
     // Set the pins for the LoRa transceiver module
     LoRa.setPins(SS, RST, DIO0);
 
-    // Initialize the LoRa module at 433 MHz
-    if (!LoRa.begin(8E6)) {
+    // Initialize the LoRa module at 868 MHz
+    if (!LoRa.begin(868E6)) {
         display.print("LoRa Error");
         Serial.println("LoRa Error");
         display.display();
@@ -78,14 +78,15 @@ void loop() {
 
     // Check if the interval (1 second) has passed
     if (currentMillis - previousMillis >= interval) {
-        previousMillis = currentMillis;        // Update the previous time
-        LoRa.beginPacket();                    // Start a new LoRa packet
-        String msg = "heja" + String(counter); // Create a message with the counter value
-        LoRa.print(msg);                       // Add the message to the packet
-        LoRa.endPacket();                      // End and send the packet
+        previousMillis = currentMillis;       // Update the previous time
+        LoRa.beginPacket();                   // Start a new LoRa packet
+        String msg = ">> " + String(counter); // Create a message with the counter value
+        LoRa.print(msg);                      // Add the message to the packet
+        LoRa.endPacket();                     // End and send the packet
 
-        Serial.println("Sent packet"); // Output the sent message to the serial monitor
-        counter++;                     // Increment the counter
+        Serial.println("Sent packet: " + msg); // Output the sent message to the serial monitor
+        counter++;                             // Increment the counter
+
         // Reset the counter after 60 packets
         if (counter > 60) {
             counter = 0;

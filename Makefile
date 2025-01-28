@@ -9,4 +9,4 @@ update:
 	@pio project init --ide vim
 
 serial:
-	@pio device monitor
+	@pio device monitor --baud 115200
