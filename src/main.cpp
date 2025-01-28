@@ -84,9 +84,8 @@ void loop() {
         LoRa.print(msg);                       // Add the message to the packet
         LoRa.endPacket();                      // End and send the packet
 
-        Serial.println("Sent packet: " + msg); // Output the sent message to the serial monitor
-        counter++;                             // Increment the counter
-
+        Serial.println("Sent packet"); // Output the sent message to the serial monitor
+        counter++;                     // Increment the counter
         // Reset the counter after 60 packets
         if (counter > 60) {
             counter = 0;
