@@ -52,7 +52,7 @@ void setup() {
     LoRa.setPins(SS, RST, DIO0);
 
     // Initialize the LoRa module at 433 MHz
-    if (!LoRa.begin(868E6)) {
+    if (!LoRa.begin(8E6)) {
         display.print("LoRa Error");
         Serial.println("LoRa Error");
         display.display();

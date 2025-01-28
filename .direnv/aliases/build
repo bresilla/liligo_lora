@@ -1,0 +1,2 @@
+#!/usr/bin/sh
+pio -f -c vim run
