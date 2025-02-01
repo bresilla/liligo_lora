@@ -78,19 +78,15 @@ void loop() {
 
     // Check if the interval (1 second) has passed
     if (currentMillis - previousMillis >= interval) {
-        previousMillis = currentMillis;       // Update the previous time
-        LoRa.beginPacket();                   // Start a new LoRa packet
-        String msg = ">> " + String(counter); // Create a message with the counter value
-        LoRa.print(msg);                      // Add the message to the packet
-        LoRa.endPacket();                     // End and send the packet
+        previousMillis = currentMillis; // Update the previous time
+        LoRa.beginPacket();             // Start a new LoRa packet
+        String msg = String(counter);   // Create a message with the counter value
+        LoRa.print(msg);                // Add the message to the packet
+        LoRa.endPacket();               // End and send the packet
 
         Serial.println("Sent packet: " + msg); // Output the sent message to the serial monitor
         counter++;                             // Increment the counter
 
-        // Reset the counter after 60 packets
-        if (counter > 60) {
-            counter = 0;
-        }
         display.clearDisplay();
         display.setCursor(0, 10);
         display.print("Sent:");
