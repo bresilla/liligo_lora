@@ -1,9 +1,9 @@
 
 build:
-	@pio -f -c vim run
+	@pio -f -c vim run -e $(env)
 
 upload:
-	@pio -f -c vim run -t upload
+	@pio -f -c vim run -e $(env) -t upload
 
 update:
 	@pio project init --ide vim
