@@ -1,76 +1,93 @@
-/* #include <Adafruit_GFX.h> */
-/* #include <Adafruit_SSD1306.h> */
-#include <LoRa.h>
+#include <RH_RF95.h>
 #include <SPI.h>
-#include <Wire.h>
 
-/* int counter = 0;                  // Counter variable to track the number of sent packets */
-/* unsigned long previousMillis = 0; // Variable to store the previous time for interval timing */
-/* const long interval = 1000;       // Interval time of 1 second (1000 ms) */
-/**/
-/* // Define the pins used by the LoRa transceiver module */
-#define SCK 5
-#define MISO 19
-#define MOSI 27
-#define SS 18
-#define RST 14
-#define DIO0 26
+#define RFM95_CS 16
+#define RFM95_INT 21
+#define RFM95_RST 17
+
+// LoRa settings
+#define RF95_FREQ 868.0
+
+// Singleton instance of the radio driver
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 void setup() {
-    /* Serial.begin(115200); // Initialize the serial port */
-    /* while (!Serial) */
-    /* ; */
-    /**/
-    /* // Initialize SPI communication for LoRa */
-    /* SPI.begin(SCK, MISO, MOSI, SS); */
-    /**/
-    /* // Set the pins for the LoRa transceiver module */
-    /* LoRa.setPins(SS, RST, DIO0); */
-    /**/
-    /* // Initialize the LoRa module at 868 MHz */
-    /* if (!LoRa.begin(868E6)) { */
-    /*     Serial.println("LoRa Error"); */
-    /*     while (1) */
-    /*         ; // Halt the program if LoRa initialization fails */
-    /* } else { */
-    /*     Serial.println("LoRa OK"); */
-    /**/
-    /*     // Optional: Increase sensitivity and adjust settings */
-    /*     // LoRa.setSpreadingFactor(12); // Maximum spreading factor */
-    /*     // LoRa.setSignalBandwidth(125E3); // Bandwidth */
-    /*     // LoRa.setCodingRate4(4); // Coding rate (4/8) */
-    /**/
-    /*     // Set maximum transmission power to 20 dBm (default is 17 dBm) */
-    /*     LoRa.setTxPower(20, PA_OUTPUT_PA_BOOST_PIN); */
-    /* } */
+    pinMode(RFM95_RST, OUTPUT);
+    digitalWrite(RFM95_RST, HIGH);
+
+    Serial.begin(115200);
+    while (!Serial)
+        delay(1);
+    delay(100);
+
+    Serial.println("Feather LoRa TX Test!");
+
+    // manual reset
+    digitalWrite(RFM95_RST, LOW);
+    delay(10);
+    digitalWrite(RFM95_RST, HIGH);
+    delay(10);
+
+    while (!rf95.init()) {
+        Serial.println("LoRa radio init failed");
+        Serial.println("Uncomment '#define SERIAL_DEBUG' in RH_RF95.cpp for detailed debug info");
+        while (1)
+            ;
+    }
+    Serial.println("LoRa radio init OK!");
+
+    // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
+    if (!rf95.setFrequency(RF95_FREQ)) {
+        Serial.println("setFrequency failed");
+        while (1)
+            ;
+    }
+    Serial.print("Set Freq to: ");
+    Serial.println(RF95_FREQ);
+
+    // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+
+    // The default transmitter power is 13dBm, using PA_BOOST.
+    // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
+    // you can set transmitter powers from 5 to 23 dBm:
+    rf95.setTxPower(23, false);
 }
 
-void loop() {
-    /* unsigned long currentMillis = millis(); // Get the current time */
+int16_t packetnum = 0; // packet counter, we increment per xmission
 
-    /* // Check if the interval (1 second) has passed */
-    /* if (currentMillis - previousMillis >= interval) { */
-    /*     previousMillis = currentMillis; // Update the previous time */
-    /*     LoRa.beginPacket();             // Start a new LoRa packet */
-    /*     String msg = String(counter);   // Create a message with the counter value */
-    /*     LoRa.print(msg);                // Add the message to the packet */
-    /*     LoRa.endPacket();               // End and send the packet */
-    /**/
-    /*     Serial.println("Sent packet: " + msg); // Output the sent message to the serial monitor */
-    /*     counter++;                             // Increment the counter */
-    /* } */
-    /**/
-    /* // Check if a new packet has been received */
-    /* int packetSize = LoRa.parsePacket(); */
-    /* if (packetSize) { */
-    /*     // A packet has been received */
-    /*     Serial.print("Data: "); */
-    /**/
-    /*     // Read the packet */
-    /*     while (LoRa.available()) { */
-    /*         String LoRaData = LoRa.readString(); // Read the received data as a string */
-    /*         int rssi = LoRa.packetRssi();        // Read the RSSI (signal strength) */
-    /*         Serial.println(LoRaData);            // Output the received data to the serial monitor */
-    /*     } */
-    /* } */
+void loop() {
+    delay(1000);                       // Wait 1 second between transmits, could also 'sleep' here!
+    Serial.println("Transmitting..."); // Send a message to rf95_server
+
+    char radiopacket[20] = "Hello World #      ";
+    itoa(packetnum++, radiopacket + 13, 10);
+    Serial.print("Sending ");
+    Serial.println(radiopacket);
+    radiopacket[19] = 0;
+
+    Serial.println("Sending...");
+    delay(10);
+    rf95.send((uint8_t *)radiopacket, 20);
+
+    Serial.println("Waiting for packet to complete...");
+    delay(10);
+    rf95.waitPacketSent();
+    // Now wait for a reply
+    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+
+    Serial.println("Waiting for reply...");
+    if (rf95.waitAvailableTimeout(1000)) {
+        // Should be a reply message for us now
+        if (rf95.recv(buf, &len)) {
+            Serial.print("Got reply: ");
+            Serial.println((char *)buf);
+            Serial.print("RSSI: ");
+            Serial.println(rf95.lastRssi(), DEC);
+        } else {
+            Serial.println("Receive failed");
+        }
+    } else {
+        Serial.println("No reply, is there a listener around?");
+    }
 }
