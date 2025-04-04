@@ -1,2 +1,2 @@
 #!/usr/bin/sh
-pio -f -c vim run
+make build env=rpi
