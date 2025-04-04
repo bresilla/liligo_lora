@@ -1,28 +1,43 @@
+#include <RHHardwareSPI.h>
 #include <RH_RF95.h>
 #include <SPI.h>
+
+#define RF95_FREQ 868.0
 
 #if defined(__AVR_ATmega32U4__)
 #define RFM95_CS 8
 #define RFM95_INT 7
 #define RFM95_RST 4
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
+
 #elif defined(ADAFRUIT_FEATHER_M0) || defined(ADAFRUIT_FEATHER_M0_EXPRESS) || defined(ARDUINO_SAMD_FEATHER_M0)
 #define RFM95_CS 8
 #define RFM95_INT 3
 #define RFM95_RST 4
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
+
 #elif defined(ARDUINO_ADAFRUIT_FEATHER_RP2040_RFM)
 #define RFM95_CS 16
 #define RFM95_INT 21
 #define RFM95_RST 17
+// Create an RHHardwareSPI instance for SPI1
+RHHardwareSPI spi1(&SPI1);
+RH_RF95 rf95(RFM95_CS, RFM95_INT, spi1);
+
 #endif
 
-#define RF95_FREQ 868.0
-
 // Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 void setup() {
     pinMode(RFM95_RST, OUTPUT);
     digitalWrite(RFM95_RST, HIGH);
+
+#if defined(ARDUINO_ADAFRUIT_FEATHER_RP2040_RFM)
+    SPI1.setMISO(12);
+    SPI1.setMOSI(11);
+    SPI1.setSCK(10);
+    SPI1.begin();
+#endif
 
     Serial.begin(115200);
     while (!Serial)
@@ -35,9 +50,9 @@ void setup() {
 
     // manual reset
     digitalWrite(RFM95_RST, LOW);
-    delay(10);
+    delay(100);
     digitalWrite(RFM95_RST, HIGH);
-    delay(10);
+    delay(100);
 
     while (!rf95.init()) {
         Serial.println("LoRa radio init failed");
