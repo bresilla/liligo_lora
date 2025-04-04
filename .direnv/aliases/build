@@ -1,2 +1,2 @@
 #!/usr/bin/sh
-make build env=rpi
+make build env=
