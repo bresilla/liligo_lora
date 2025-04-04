@@ -21,39 +21,75 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 #define RFM95_CS 16
 #define RFM95_INT 21
 #define RFM95_RST 17
-// Create an RHHardwareSPI instance for SPI1
-RHHardwareSPI myspi;
-RH_RF95 rf95(RFM95_CS, RFM95_INT, myspi);
+#define SCK 10
+#define MISO 12
+#define MOSI 11
+#define SS 18
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
+
+#elif defined(LILYGO_TTGO_LORA32_V2)
+#define RFM95_CS 18
+#define RFM95_INT 26
+#define RFM95_RST 23
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
+
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <SPI.h>
+#include <Wire.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #endif
 
 // Unique node ID for this device
-#define MY_NODE_ID 2
+#define MY_NODE_ID 12
 
 // This node's simplified IPv6 address.
 uint8_t myIPv6Address[IPV6_ADDR_LEN];
 
 unsigned long previousMillis = 0;
-const long interval = 5000; // Send a packet every 5 seconds
+const long interval = 2000; // Send a packet every 5 seconds
+
+// Safe serial print wrapper
+void safePrintln(const String &msg) {
+    if (Serial)
+        Serial.println(msg);
+}
+void safePrint(const String &msg) {
+    if (Serial)
+        Serial.print(msg);
+}
 
 void setup() {
     // Setup radio reset pin.
     pinMode(RFM95_RST, OUTPUT);
     digitalWrite(RFM95_RST, HIGH);
 
-#if defined(ARDUINO_ADAFRUIT_FEATHER_RP2040_RFM)
+    // #if defined(ARDUINO_ADAFRUIT_FEATHER_RP2040_RFM)
     // Configure SPI1 pins for Feather RP2040 RFM.
-    SPI1.setMISO(12);
-    SPI1.setMOSI(11);
-    SPI1.setSCK(10);
-    SPI1.begin();
+    // SPI.begin();
+    // #endif
+
+#if defined(LILYGO_TTGO_LORA32_V2)
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.println("RadioHead LoRa Mesh Example");
+    display.display();
 #endif
 
     Serial.begin(115200);
-    while (!Serial)
-        delay(1);
-    delay(100);
+    // Wait briefly for Serial to connect (non-blocking)
+    unsigned long startMillis = millis();
+    while (!Serial && millis() - startMillis < 2000) {
+        delay(10);
+    }
 
-    Serial.println("RadioHead LoRa Mesh Example");
+    safePrintln("RadioHead LoRa Mesh Example");
 
     // Manual reset for the radio
     digitalWrite(RFM95_RST, LOW);
@@ -63,18 +99,18 @@ void setup() {
 
     // Initialize the radio.
     while (!rf95.init()) {
-        Serial.println("LoRa radio init failed");
+        safePrintln("LoRa radio init failed");
         delay(1000);
     }
-    Serial.println("LoRa radio init OK!");
+    safePrintln("LoRa radio init OK!");
 
     if (!rf95.setFrequency(RF95_FREQ)) {
-        Serial.println("setFrequency failed");
+        safePrintln("setFrequency failed");
         while (1)
             ;
     }
-    Serial.print("Set Freq to: ");
-    Serial.println(RF95_FREQ);
+    safePrint("Set Freq to: ");
+    safePrintln(String(RF95_FREQ));
 
     rf95.setTxPower(23, false);
 
@@ -83,9 +119,11 @@ void setup() {
 
     // Initialize this node's IPv6 address.
     initIPv6Address(MY_NODE_ID, myIPv6Address);
-    Serial.print("My IPv6 Address: ");
-    printIPv6Address(myIPv6Address);
-    Serial.println();
+    safePrint("My IPv6 Address: ");
+    if (Serial) {
+        printIPv6Address(myIPv6Address);
+        Serial.println();
+    }
 }
 
 void loop() {
@@ -108,30 +146,32 @@ void loop() {
                 SimpleIPv6Packet incomingPacket;
                 memcpy(&incomingPacket, buf, sizeof(SimpleIPv6Packet));
 
-                Serial.print("Received packet Seq: ");
-                Serial.print(incomingPacket.sequenceNumber);
-                Serial.print(" From: ");
-                printIPv6Address(incomingPacket.source);
-                Serial.print(" To: ");
-                printIPv6Address(incomingPacket.destination);
-                Serial.print(" HopLimit: ");
-                Serial.print(incomingPacket.hopLimit);
-                Serial.print(" Msg: ");
-                Serial.println(incomingPacket.payload);
+                if (Serial) {
+                    Serial.print("Received packet Seq: ");
+                    Serial.print(incomingPacket.sequenceNumber);
+                    Serial.print(" From: ");
+                    printIPv6Address(incomingPacket.source);
+                    Serial.print(" To: ");
+                    printIPv6Address(incomingPacket.destination);
+                    Serial.print(" HopLimit: ");
+                    Serial.print(incomingPacket.hopLimit);
+                    Serial.print(" Msg: ");
+                    Serial.println(incomingPacket.payload);
+                }
 
                 // Process the packet if it is addressed to this node or is a broadcast.
                 if (ipv6Equal(incomingPacket.destination, myIPv6Address) || ipv6Equal(incomingPacket.destination, BROADCAST_ADDRESS)) {
-                    Serial.println("Packet intended for this node.");
+                    safePrintln("Packet intended for this node.");
                     // Add application-specific processing here.
                 } else {
-                    Serial.println("Packet not for me; forwarding...");
+                    safePrintln("Packet not for me; forwarding...");
                     forwardPacket(&incomingPacket);
                 }
             } else {
-                Serial.println("Received packet with unexpected length");
+                safePrintln("Received packet with unexpected length");
             }
         } else {
-            Serial.println("Receive failed");
+            safePrintln("Receive failed");
         }
     }
 }
