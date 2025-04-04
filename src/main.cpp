@@ -21,8 +21,8 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 #define RFM95_INT 21
 #define RFM95_RST 17
 // Create an RHHardwareSPI instance for SPI1
-RHHardwareSPI spi1(&SPI1);
-RH_RF95 rf95(RFM95_CS, RFM95_INT, spi1);
+RHHardwareSPI myspi;
+RH_RF95 rf95(RFM95_CS, RFM95_INT, myspi);
 
 #endif
 
