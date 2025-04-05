@@ -24,27 +24,16 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 #define SCK 10
 #define MISO 12
 #define MOSI 11
-#define SS 18
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
-
 #elif defined(LILYGO_TTGO_LORA32_V2)
 #define RFM95_CS 18
 #define RFM95_INT 26
 #define RFM95_RST 23
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
-
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include <SPI.h>
-#include <Wire.h>
-
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #endif
 
 // Unique node ID for this device
-#define MY_NODE_ID 12
+#define MY_NODE_ID 34
 
 // This node's simplified IPv6 address.
 uint8_t myIPv6Address[IPV6_ADDR_LEN];
@@ -67,27 +56,20 @@ void setup() {
     pinMode(RFM95_RST, OUTPUT);
     digitalWrite(RFM95_RST, HIGH);
 
-    // #if defined(ARDUINO_ADAFRUIT_FEATHER_RP2040_RFM)
-    // Configure SPI1 pins for Feather RP2040 RFM.
-    // SPI.begin();
-    // #endif
-
-#if defined(LILYGO_TTGO_LORA32_V2)
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.println("RadioHead LoRa Mesh Example");
-    display.display();
-#endif
-
     Serial.begin(115200);
     // Wait briefly for Serial to connect (non-blocking)
     unsigned long startMillis = millis();
     while (!Serial && millis() - startMillis < 2000) {
         delay(10);
     }
+
+#if defined(ARDUINO_ADAFRUIT_FEATHER_RP2040_RFM)
+    // Configure SPI1 pins for Feather RP2040 RFM.
+    SPI1.setMISO(12);
+    SPI1.setMOSI(11);
+    SPI1.setSCK(10);
+    SPI1.begin();
+#endif
 
     safePrintln("RadioHead LoRa Mesh Example");
 
